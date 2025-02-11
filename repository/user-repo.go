@@ -106,7 +106,7 @@ func (db *userConnection) CreateUser(ctx context.Context, tx *sqlx.Tx, u model.U
 		INSERT INTO 
 			users (username, name, password, email, phone) 
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7)
+			($1, $2, $3, $4, $5)
 		RETURNING email
 			;
 	`

@@ -93,7 +93,6 @@ func (m *customMiddleware) CORSMiddleware() fiber.Handler {
 
 func (m *customMiddleware) AuthorizeJWT() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			utils.BuildErrorResponse(c, http.StatusUnauthorized, "no token provided")

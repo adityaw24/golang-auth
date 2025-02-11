@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/adityaw24/golang-auth/databases"
 	"github.com/adityaw24/golang-auth/middleware"
 	"github.com/adityaw24/golang-auth/repository"
-	"github.com/adityaw24/golang-auth/router"
 	"github.com/adityaw24/golang-auth/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
@@ -45,7 +45,6 @@ func init() {
 func main() {
 	app := fiber.New()
 
-	apiVersion := viper.GetString(`API_VERSION`)
 	appPort := viper.GetInt(`PORT`)
 	secretKey := viper.GetString("JWT_SECRET")
 	customJwt := services.NewJWTService(secretKey)
@@ -61,21 +60,48 @@ func main() {
 
 	mw := middleware.InitCustomMiddleware(customJwt)
 
-	httpRouter := router.NewFiberRouter(app)
+	// httpRouter := router.NewFiberRouter(app)
+	// httpRouter.Use(mw.LoggerMiddleware(), mw.CORSMiddleware(), mw.MethodMiddleware(), mw.AuthorizeJWT())
 
-	httpRouter.Use(mw.LoggerMiddleware(), mw.CORSMiddleware(), mw.MethodMiddleware())
-	version := httpRouter.Group(apiVersion)
+	// version := httpRouter.Group(apiVersion)
 
-	version.Get("/", func(c *fiber.Ctx) error {
-		log.Println(c.OriginalURL())
-		return c.SendString("Hello, World!")
-	}).Name("index")
+	// version.Get("/", func(c *fiber.Ctx) error {
+	// 	log.Println(c.OriginalURL())
+	// 	return c.SendString("Hello, World!")
+	// }).Name("index")
 
-	httpRouter.UserList(version, controllerUser)
-	httpRouter.UserDetail(version, controllerUser)
+	// httpRouter.UserList(version, controllerUser)
+	// httpRouter.UserDetail(version, controllerUser)
 
-	httpRouter.Login(version, controllerAuth)
-	httpRouter.Register(version, controllerAuth)
+	// httpRouter.Login(version, controllerAuth)
+	// httpRouter.Register(version, controllerAuth)
 
-	httpRouter.Run(appPort, "golang-auth")
+	// httpRouter.Run(appPort, "golang-auth")
+
+	Serve(app, appPort, "golang-auth", mw, controllerAuth, controllerUser)
+
+}
+
+func Serve(app *fiber.App, port int, serviceName string, mw middleware.CustomMiddleware, controllerAuth controller.AuthController, controllerUser controller.UserController) error {
+	apiVersion := viper.GetString(`API_VERSION`)
+	version := app.Group(apiVersion)
+
+	auth := version.Group("/auth")
+	auth.Use(mw.LoggerMiddleware(), mw.CORSMiddleware(), mw.MethodMiddleware())
+	auth.Post("/login", controllerAuth.Login())
+	auth.Post("/register", controllerAuth.Register())
+
+	user := version.Group("/user")
+	user.Use(mw.LoggerMiddleware(), mw.CORSMiddleware(), mw.MethodMiddleware(), mw.AuthorizeJWT())
+	user.Get("/user-list", controllerUser.GetUserList())
+	user.Get("/user-detail/{id:[0-9]+}", controllerUser.GetUserDetail())
+
+	log.Printf(serviceName+" - Fiber HTTP Server was running on port %d...\n", port)
+
+	err := app.Listen(fmt.Sprintf(":%d", port))
+	if err != nil {
+		log.Printf("Error running Fiber HTTP Server on port %d: %v\n", port, err)
+		return err
+	}
+	return err
 }
