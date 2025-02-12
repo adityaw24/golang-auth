@@ -29,6 +29,7 @@ type UserDetailModel struct {
 
 type UserResponse struct {
 	User_id  uuid.UUID `json:"user_id"`
+	Name     string    `json:"name"`
 	Username string    `json:"username"`
 	Email    string    `json:"email"`
 	Password string    `json:"-"`

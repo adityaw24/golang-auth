@@ -13,7 +13,7 @@ import (
 // TODO: search how to return a populated struct from function, if struct is defined
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, tx *sqlx.Tx, u model.User) (string, error)
+	CreateUser(ctx context.Context, tx *sqlx.Tx, u model.User) (model.UserResponse, error)
 	FindByEmail(ctx context.Context, email string) (model.UserResponse, error)
 	GetUserList(ctx context.Context) ([]model.User, error)
 	GetUserDetail(ctx context.Context, id uuid.UUID) (model.UserDetailModel, error)
@@ -97,9 +97,9 @@ func (db *userConnection) GetUserDetail(ctx context.Context, id uuid.UUID) (mode
 	return userDetail, err
 }
 
-func (db *userConnection) CreateUser(ctx context.Context, tx *sqlx.Tx, u model.User) (string, error) {
+func (db *userConnection) CreateUser(ctx context.Context, tx *sqlx.Tx, u model.User) (model.UserResponse, error) {
 	var (
-		createdUser string
+		user model.UserResponse
 	)
 
 	query := `
@@ -107,7 +107,7 @@ func (db *userConnection) CreateUser(ctx context.Context, tx *sqlx.Tx, u model.U
 			users (username, name, password, email, phone) 
 		VALUES
 			($1, $2, $3, $4, $5)
-		RETURNING email
+		RETURNING user_id
 			;
 	`
 
@@ -120,15 +120,21 @@ func (db *userConnection) CreateUser(ctx context.Context, tx *sqlx.Tx, u model.U
 		u.Email,
 		u.Phone,
 	).Scan(
-		&createdUser,
+		&user.User_id,
 	)
+
+	user.Username = u.Username
+	user.Name = u.Name
+	user.Password = u.Password
+	user.Email = u.Email
+	user.Phone = u.Phone
 
 	if err != nil {
 		utils.LogError("Repo", "func CreateUser", err)
-		return createdUser, err
+		return user, err
 	}
 
-	return createdUser, err
+	return user, err
 }
 
 func (db *userConnection) FindByEmail(ctx context.Context, email string) (model.UserResponse, error) {

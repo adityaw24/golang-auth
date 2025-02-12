@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/adityaw24/golang-auth/model"
@@ -64,6 +63,6 @@ func comparePassword(hashedPass string, plainPass string) bool {
 		utils.LogError("Services", "VerifyCredentials", err)
 		return false
 	}
-	log.Println("| Password Matched.")
+	// log.Println("| Password Matched.")
 	return true
 }

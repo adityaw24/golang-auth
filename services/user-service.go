@@ -14,7 +14,7 @@ import (
 )
 
 type UserService interface {
-	CreateUser(ctx context.Context, u model.RegisterUser) (string, error)
+	CreateUser(ctx context.Context, u model.RegisterUser) (model.UserResponse, error)
 	GetUserList(ctx context.Context) ([]model.User, error)
 	GetUserDetail(ctx context.Context, id uuid.UUID) (model.UserDetailModel, error)
 }
@@ -66,34 +66,34 @@ func (service *userService) GetUserDetail(ctx context.Context, id uuid.UUID) (mo
 	return detail, err
 }
 
-func (service *userService) CreateUser(ctx context.Context, u model.RegisterUser) (string, error) {
+func (service *userService) CreateUser(ctx context.Context, u model.RegisterUser) (model.UserResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, service.timeoutContext)
 	defer cancel()
 
 	var (
-		email string
-		err   error
+		user model.UserResponse
+		err  error
 	)
 
 	tx, err := service.db.Beginx()
 	if err != nil {
 		utils.LogError("Services", "CreateUser open tx", err)
-		return email, err
+		return user, err
 	}
 
-	user, err := service.userRepository.FindByEmail(ctx, u.Email)
+	user, err = service.userRepository.FindByEmail(ctx, u.Email)
 
 	if user.Email != "" {
 		err = errors.New("email address already registered")
 		utils.LogError("Service", "CreateUser", err)
 		utils.CommitOrRollback(tx, "Services CreateUser", err)
-		return email, err
+		return user, err
 	}
 
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		utils.LogError("Service", "CreateUser", err)
 		utils.CommitOrRollback(tx, "Services CreateUser", err)
-		return email, err
+		return user, err
 	}
 
 	//Hash plain password
@@ -101,7 +101,7 @@ func (service *userService) CreateUser(ctx context.Context, u model.RegisterUser
 	if err != nil {
 		utils.LogError("Service", "CreateUser Hash password", err)
 		utils.CommitOrRollback(tx, "Services CreateUser hash password", err)
-		return email, err
+		return user, err
 	}
 
 	registeredData := model.User{
@@ -112,11 +112,11 @@ func (service *userService) CreateUser(ctx context.Context, u model.RegisterUser
 		Phone:    u.Phone,
 	}
 
-	email, err = service.userRepository.CreateUser(ctx, tx, registeredData)
+	user, err = service.userRepository.CreateUser(ctx, tx, registeredData)
 	if err != nil {
 		utils.LogError("Service", "CreateUser", err)
 		utils.CommitOrRollback(tx, "Services CreateUser", err)
-		return email, err
+		return user, err
 	}
-	return email, nil
+	return user, nil
 }

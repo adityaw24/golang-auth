@@ -57,8 +57,10 @@ func (c *authController) Login() fiber.Handler {
 
 func (c *authController) Register() fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		var regUser model.RegisterUser
-		var createdUser string
+		var (
+			userResponse model.UserResponse
+			regUser      model.RegisterUser
+		)
 
 		err := ctx.BodyParser(&regUser)
 		if err != nil {
@@ -66,13 +68,17 @@ func (c *authController) Register() fiber.Handler {
 			return err
 		}
 
-		createdUser, err = c.userServ.CreateUser(ctx.Context(), regUser)
+		userResponse, err = c.userServ.CreateUser(ctx.Context(), regUser)
 		if err != nil {
 			errMsg := err.Error()
 			utils.BuildErrorResponse(ctx, http.StatusConflict, errMsg)
 			return err
 		}
-		utils.BuildResponse(ctx, http.StatusOK, "success", createdUser)
+
+		token := c.jwtServ.GenerateToken(userResponse.User_id)
+		userResponse.Token = token
+
+		utils.BuildResponse(ctx, http.StatusOK, "success", userResponse)
 		return err
 	}
 }
